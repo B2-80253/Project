@@ -1,3 +1,4 @@
+import PIL
 from flask import Flask, render_template, request, redirect, url_for
 import matplotlib.pyplot as plt
 import cv2
@@ -114,33 +115,86 @@ def decode_predictions(preds, label_names):
     return result
 
 # Create Server
-app = Flask(__name__)
-
 # @app.route("/", methods=["GET"])
 # def root():
 #     return render_template("new_index.html")
+from flask import Flask, render_template, request, redirect, url_for
+from PIL import Image
+
+app = Flask(__name__)
+app.config['UPLOAD_FOLDER'] = 'static'
+app.config['ALLOWED_EXTENSIONS'] = {'png'}
+
+def allowed_file(filename):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
+
+
+from PIL import Image
+
+def validate_image(file):
+    try:
+        # Check if the file is None
+        if file.filename is None:
+            return False, "No file selected"
+
+        # Check if the file is allowed
+        if not allowed_file(file.filename):
+            return False, "Invalid file format"
+
+        # Check if the file is a PNG image
+        _, ext = os.path.splitext(file.filename)
+        if ext.lower() != '.png':
+            return False, "Image format must be .png"
+
+        # Validate the image size and dimensions
+        img = Image.open(file)
+        width, height = img.size
+        if width > 512 or height > 512:
+            return False, "Image dimensions must be less than or equal to 512x512 pixels"
+        if file.tell() > 1274400:
+            return False, "Image size must be less than or equal to 1274400 bytes"
+
+        return True, None
+    except Exception as e:
+        return False, f"Error processing image: {e}"
+
+
+
 
 @app.route("/", methods=["GET", "POST"])
 def index():
+    error_message = None
     if request.method == "POST":
-        # Get the uploaded image
-        img = request.files["image"]
-        img_path = os.path.join("static", img.filename)
-        img.save(img_path)
+        if 'image' not in request.files:
+            return redirect(request.url)
 
-        # Redirect to the result page with the image path
-        return redirect(url_for("result", image=img_path))
+        file = request.files['image']
 
-    return render_template("new_index.html")
+        if file.filename == '':
+            return redirect(request.url)
+
+        if file and allowed_file(file.filename):
+            is_valid, message = validate_image(file)
+            if is_valid:
+                file.save(os.path.join(app.config['UPLOAD_FOLDER'], file.filename))
+                return redirect(url_for("result", image=file.filename))
+            else:
+                error_message = message
+
+    return render_template("new_index.html", error_message=error_message, label_names=label_names)
 
 @app.route("/result", methods=["GET"])
 def result():
     image_path = request.args.get("image")
-    preds = predict_protein(image_path)
-    top_preds = decode_predictions(preds, label_names)
-    top_3_proteins = [(pred[1], pred[0]) for pred in top_preds[:3]]
+    top_3_proteins = []  # Assume no predictions for now
+    if image_path:
+        preds = predict_protein(os.path.join(app.config['UPLOAD_FOLDER'], image_path))
+        top_preds = decode_predictions(preds, label_names)
+        top_3_proteins = [(pred[1], pred[0]) for pred in top_preds[:3]]
     return render_template("result.html", image=image_path, top_3_proteins=top_3_proteins)
 
-# Start the server
+
+
 if __name__ == '__main__':
     app.run(debug=True)

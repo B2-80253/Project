@@ -24,6 +24,47 @@
             margin-bottom: 20px;
         }
 
+        .container {
+            width: 55%;
+            display: flex;
+            flex-wrap: wrap; /* Allow items to wrap onto the next line */
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+
+        .labels-box {
+            background-color: rgba(255, 255, 255, 0.7);
+            padding: 20px;
+            border-radius: 10px;
+            margin-right: 20px;
+            flex: 1;
+        }
+
+        .labels-box h2 {
+            color: white;
+            background-color: #007bff;
+            padding: 10px;
+            border-radius: 5px;
+            text-align: center;
+            margin-top: 0;
+        }
+
+        .labels {
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+            color: black;
+        }
+
+        .labels li {
+            margin-bottom: 5px;
+        }
+
+        .form-container {
+            flex: 1;
+            min-width: 300px; /* Set a minimum width for the form container */
+        }
+
         form {
             background-color: rgba(255, 255, 255, 0.7);
             padding: 20px;
@@ -44,38 +85,48 @@
             cursor: pointer;
         }
 
-        .prediction {
-            background-color: rgba(255, 255, 255, 0.7);
-            padding: 20px;
-            border-radius: 10px;
+        .error {
+    color: red;
+    margin-top: 10px;
+    text-align: center; /* Center the text */
+}
+
+        #imagePreview {
             margin-top: 20px;
             text-align: center;
+            display: none; /* Hide the image preview initially */
         }
 
-        .prediction h2 {
-            margin-bottom: 10px;
-        }
-
-        .prediction ul {
-            list-style-type: none;
-            padding: 0;
-        }
-
-        .prediction li {
-            margin-bottom: 5px;
+        #uploadedImage {
+            max-width: 300px;
+            margin-top: 10px;
         }
     </style>
 </head>
 <body>
     <h1>Predict the protein in an image</h1>
-    <form action="/" method="POST" enctype="multipart/form-data" id="uploadForm">
-        <input type="file" name="image" accept="image/*" id="imageInput" required>
-        <button type="button" onclick="submitForm()">Submit</button>
-    </form>
-    <div id="imagePreview"></div>
+    <div class="container">
+        <div class="labels-box">
+    <h2>Predicting from the following Labels</h2>
+    <ul class="labels">
+        {% for key, value in label_names.items() %}
+        <li><strong>{{ key }}:</strong> {{ value }}</li>
+        {% endfor %}
+    </ul>
+</div>
+        <div class="form-container">
+            <form action="/" method="POST" enctype="multipart/form-data" id="uploadForm">
+                <input type="file" name="image" accept="image/*" id="imageInput" required>
+                <button type="button" onclick="submitForm()">Submit</button>
+            </form>
+            <div id="imagePreview"></div>
+            <div id="errorMessage" class="error">{{ error_message }}</div>
+        </div>
+    </div>
 
     <script>
         function submitForm() {
+            document.getElementById("errorMessage").style.display = "none";
             document.getElementById("uploadForm").submit();
         }
 
@@ -87,8 +138,10 @@
                     var img = document.createElement("img");
                     img.src = e.target.result;
                     img.style.maxWidth = "300px";
-                    document.getElementById("imagePreview").innerHTML = "";
-                    document.getElementById("imagePreview").appendChild(img);
+                    var imagePreview = document.getElementById("imagePreview");
+                    imagePreview.innerHTML = "";
+                    imagePreview.appendChild(img);
+                    imagePreview.style.display = "block"; // Show the image preview
                 };
                 reader.readAsDataURL(file);
             }
